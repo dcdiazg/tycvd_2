@@ -1,0 +1,10 @@
+# Archivo para configuraciones de usuario del programa
+
+[webdriver]
+# Selecciona el WebDriver a utilizar con Selenium
+# 'driver' admite las opciones 'chrome', chromium', 'firefox' y 'edge'
+# Si 'local' no se indica o está vacío, se descargará un WebDriver apropiado
+# ad-hoc mediante el módulo 'webdriver_manager'. Si se indica 'local', deberá
+# ser la ruta al WebDriver en el sistema de archivos.
+driver = "chrome"
+local = ""

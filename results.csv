@@ -1,0 +1,101 @@
+Symbol,Name,Price,Currency,Volume,Market Cap,Sector
+NVDA,NVIDIA Corporation,136.05,USD,187.526,3.337,Electronic technology
+TSLA,"Tesla, Inc.",242.84,USD,68.802,779.531,Consumer durables
+AAPL,Apple Inc.,222.01,USD,44.944,3.356,Electronic technology
+MSFT,Microsoft Corporation,408.46,USD,19.672,3.037,Technology services
+AMZN,"Amazon.com, Inc.",195.78,USD,38.492,2.059,Retail trade
+META,"Meta Platforms, Inc.",560.68,USD,12.064,1.415,Technology services
+DJT,Trump Media & Technology Group Corp.,34.34,USD,120.922,6.873,Commercial services
+AMD,"Advanced Micro Devices, Inc.",140.71,USD,29.114,228.345,Electronic technology
+LLY,Eli Lilly and Company,806.14,USD,3.918,765.281,Health technology
+PLTR,Palantir Technologies Inc.,41.41,USD,75.404,92.736,Technology services
+MSTR,MicroStrategy Incorporated,222.99,USD,13.439,45.188,Technology services
+GOOG,Alphabet Inc.,170.68,USD,16.193,2.08,Technology services
+CEG,Constellation Energy Corporation,225.95,USD,10.719,70.652,Utilities
+SMCI,"Super Micro Computer, Inc.",26.03,USD,92.052,15.242,Electronic technology
+AVGO,Broadcom Inc.,168.55,USD,13.621,787.226,Electronic technology
+COIN,"Coinbase Global, Inc.",186.27,USD,11.348,46.633,Finance
+SHW,Sherwin-Williams Company (The),374.4,USD,5.566,94.294,Process industries
+INTC,Intel Corporation,22.52,USD,84.616,97.129,Electronic technology
+VKTX,"Viking Therapeutics, Inc.",63.14,USD,29.612,7.036,Health technology
+JPM,JP Morgan Chase & Co.,219.78,USD,8.23,618.756,Finance
+XOM,Exxon Mobil Corporation,118.61,USD,14.965,526.964,Energy minerals
+MU,"Micron Technology, Inc.",101.73,USD,15.766,112.792,Electronic technology
+BA,Boeing Company (The),155.07,USD,10.29,115.927,Electronic technology
+CRM,"Salesforce, Inc.",298.01,USD,5.108,284.898,Technology services
+UNH,UnitedHealth Group Incorporated,557.77,USD,2.657,515.055,Health services
+NFLX,"Netflix, Inc.",755.51,USD,1.902,322.949,Technology services
+COST,Costco Wholesale Corporation,886.07,USD,1.577,392.594,Retail trade
+DELL,Dell Technologies Inc.,129.85,USD,10.609,94.595,Electronic technology
+BAC,Bank of America Corporation,41.33,USD,31.11,317.12,Finance
+FSLR,"First Solar, Inc.",212.28,USD,5.906,22.726,Electronic technology
+V,Visa Inc.,291.85,USD,4.282,557.107,Commercial services
+VST,Vistra Corp.,115.74,USD,10.743,39.764,Utilities
+PFE,"Pfizer, Inc.",27.76,USD,41.348,157.307,Health technology
+UBER,"Uber Technologies, Inc.",73.25,USD,14.949,154.243,Transportation
+MA,Mastercard Incorporated,505.58,USD,2.165,464.005,Commercial services
+HD,"Home Depot, Inc. (The)",395.57,USD,2.691,392.917,Retail trade
+RBLX,Roblox Corporation,50.0,USD,19.491,32.811,Technology services
+WMT,Walmart Inc.,82.45,USD,11.731,662.754,Retail trade
+BKNG,Booking Holdings Inc. Common Stock,4776.46,USD,199.99,158.085,Consumer services
+CVX,Chevron Corporation,153.97,USD,6.13,281.598,Energy minerals
+ADBE,Adobe Inc.,481.35,USD,1.955,211.89,Technology services
+MRK,"Merck & Company, Inc.",101.87,USD,9.183,258.221,Health technology
+SPGI,S&P Global Inc.,485.77,USD,1.909,150.734,Commercial services
+CMCSA,Comcast Corporation,42.53,USD,21.753,162.743,Consumer services
+NEE,"NextEra Energy, Inc.",78.37,USD,11.759,161.16,Utilities
+GS,"Goldman Sachs Group, Inc. (The)",511.47,USD,1.798,161.522,Finance
+NOW,"ServiceNow, Inc.",954.59,USD,948.362,196.646,Technology services
+CVNA,Carvana Co.,226.08,USD,3.893,46.941,Retail trade
+PG,Procter & Gamble Company (The),165.08,USD,5.13,388.77,Consumer non-durables
+RDDT,"Reddit, Inc.",109.03,USD,7.719,19.296,Technology services
+HON,Honeywell International Inc.,207.54,USD,4.03,134.952,Electronic technology
+CHTR,"Charter Communications, Inc.",375.83,USD,2.196,106.883,Consumer services
+XEL,Xcel Energy Inc.,65.82,USD,12.451,37.797,Utilities
+QCOM,QUALCOMM Incorporated,165.18,USD,4.95,184.011,Electronic technology
+ORCL,Oracle Corporation,169.59,USD,4.804,469.945,Technology services
+PEP,"PepsiCo, Inc.",166.34,USD,4.885,228.217,Consumer non-durables
+RTX,RTX Corporation,118.0,USD,6.856,157.06,Electronic technology
+ELV,"Elevance Health, Inc.",417.86,USD,1.931,96.911,Health services
+WFC,Wells Fargo & Company,63.7,USD,12.607,212.089,Finance
+PYPL,"PayPal Holdings, Inc.",78.13,USD,10.257,78.328,Commercial services
+TEAM,Atlassian Corporation,218.96,USD,3.57,57.271,Technology services
+MCD,McDonald's Corporation,292.85,USD,2.583,210.074,Consumer services
+TXN,Texas Instruments Incorporated,203.66,USD,3.694,185.782,Electronic technology
+CSCO,"Cisco Systems, Inc.",55.83,USD,13.27,222.539,Electronic technology
+LIN,Linde plc,458.32,USD,1.616,218.233,Process industries
+MPWR,"Monolithic Power Systems, Inc.",766.57,USD,959.158,37.372,Electronic technology
+JNJ,Johnson & Johnson,158.24,USD,4.644,380.982,Health technology
+ZTS,Zoetis Inc.,175.18,USD,4.164,79.365,Health technology
+CDNS,"Cadence Design Systems, Inc.",289.34,USD,2.497,79.355,Technology services
+GE,GE Aerospace,171.76,USD,4.197,185.895,Producer manufacturing
+LULU,lululemon athletica inc.,318.13,USD,2.251,40.686,Retail trade
+KO,Coca-Cola Company (The),65.11,USD,10.985,280.481,Consumer non-durables
+INTU,Intuit Inc.,619.01,USD,1.153,173.504,Technology services
+ABBV,AbbVie Inc.,200.47,USD,3.532,354.099,Health technology
+DOW,Dow Inc.,47.95,USD,14.634,33.569,Process industries
+AMAT,"Applied Materials, Inc.",181.82,USD,3.858,149.893,Producer manufacturing
+NXPI,NXP Semiconductors N.V.,236.9,USD,2.936,60.346,Electronic technology
+CRWD,"CrowdStrike Holdings, Inc.",298.88,USD,2.322,73.268,Technology services
+SBUX,Starbucks Corporation,97.03,USD,7.049,109.954,Consumer services
+CAT,"Caterpillar, Inc.",376.52,USD,1.794,182.574,Producer manufacturing
+MCK,McKesson Corporation,525.94,USD,1.276,68.202,Distribution services
+MRVL,"Marvell Technology, Inc.",84.38,USD,7.936,73.09,Electronic technology
+ACN,Accenture plc,343.9,USD,1.931,214.888,Technology services
+AMGN,Amgen Inc.,316.91,USD,2.09,170.35,Health technology
+ABT,Abbott Laboratories,117.65,USD,5.604,204.059,Health technology
+ETN,"Eaton Corporation, PLC",331.13,USD,1.943,130.863,Producer manufacturing
+APP,Applovin Corporation,159.11,USD,4.038,53.182,Technology services
+ILMN,"Illumina, Inc.",153.49,USD,4.168,24.451,Health technology
+TLN,Talen Energy Corporation,170.0,USD,3.745,8.67,Utilities
+CVS,CVS Health Corporation,54.65,USD,11.544,68.749,Retail trade
+REGN,"Regeneron Pharmaceuticals, Inc.",828.84,USD,743.692,91.067,Health technology
+GEV,GE Vernova Inc.,295.46,USD,2.07,81.444,Producer manufacturing
+URI,"United Rentals, Inc.",785.99,USD,775.304,51.579,Finance
+CMG,"Chipotle Mexican Grill, Inc.",56.38,USD,10.752,76.823,Consumer services
+VZ,Verizon Communications Inc.,41.06,USD,14.761,172.847,Communications
+BMY,Bristol-Myers Squibb Company,55.45,USD,10.809,112.462,Health technology
+COP,ConocoPhillips,108.86,USD,5.442,125.288,Energy minerals
+VRTX,Vertex Pharmaceuticals Incorporated,472.8,USD,1.248,122.031,Health technology
+C,"Citigroup, Inc.",62.35,USD,9.42,117.923,Finance
+DIS,Walt Disney Company (The),95.79,USD,6.088,173.724,Consumer services

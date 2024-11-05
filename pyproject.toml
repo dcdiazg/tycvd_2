@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "tycvd"
+version = "0.1.0"
+description = "Práctica para Tipología y Ciclo de Vida de los Datos"
+authors = ["Diana Díaz <dcdiazgo@uoc.edu>, Ángel Moreno <amoreno8@uoc.edu>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "^2.32.3"
+beautifulsoup4 = "^4.12.3"
+selenium = "^4.26.1"
+webdriver-manager = "^4.0.2"
+toml = "^0.10.2"
+more-itertools = "^10.5.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.7.2"
+black = "^24.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
