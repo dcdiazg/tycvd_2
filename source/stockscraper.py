@@ -23,10 +23,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
+from source.utils import check_path, q_normalize, vprint
+
+ScrapedRow = tuple[str, str, float, str, float, float | None, str | None]
+
+DEFAULT_DATA_DIR = Path(__file__).parent.parent / "data"
+
 COUNTRIES_CSV_HEADERS = ["Continent", "Country", "URLToken"]
 RESULTS_CSV_HEADER = [
     "Timestamp",
-    "Continent",
+    "Region",
     "Country",
     "Symbol",
     "Name",
@@ -47,32 +53,7 @@ TD_IDX_STOCK_VOLUME = 4
 TD_IDX_MARKET_CAP = 6
 TD_IDX_SECTOR = -2
 
-
-def q_normalize(svalue: str) -> float:
-    """Normaliza cantidades en las que la magnitud se expresa con letras
-
-    Identifica la magnitud en cuestión y la convierte siguiendo el
-    siguiente criterio:
-
-    'K' -> * 0.001
-    'M' -> * 1.0
-    'B' -> * 1_000.0
-    'T' -> * 1_000_000.0
-
-    Si no se identifica ninguna magnitud, se devuelve el valor original.
-    Devuelve el valor normalizado como un número en coma flotante.
-
-    """
-    if svalue.endswith("K"):
-        return float(svalue.removesuffix("K")) * 0.001
-    elif svalue.endswith("M"):
-        return float(svalue.removesuffix("M"))
-    elif svalue.endswith("B"):
-        return float(svalue.removesuffix("B")) * 1_000
-    elif svalue.endswith("T"):
-        return float(svalue.removesuffix("T")) * 1_000_000
-    else:
-        return float(svalue)
+T_MIN_WAIT = 3.0
 
 
 class StockScraper:
@@ -107,8 +88,9 @@ class StockScraper:
 
         En última instancia, genera un archivo CSV ('countries.csv') en el que
         se indican los países seleccionados junto con la URL de sus mercados.
-        Por defecto, se almacena en el directorio de trabajo, pero se puede
-        modificar la ruta de salida con el argumento 'output_dir'.
+        Por defecto, se almacena en la carpeta 'data' del directorio de
+        trabajo, pero se puede modificar la ruta de salida con el argumento
+        'output_dir'.
 
         Si 'verbose' es True, se mostrarán mensajes informativos durante la
         ejecución.
@@ -116,11 +98,13 @@ class StockScraper:
         No se devuelve ningún valor.
 
         """
+        if verbose:
+            vprint.set = True
+
         countries = []
         # Setup del WebDriver, modo silencioso
         driver = self._setup_webdriver()
-        if verbose:
-            print(">>> WebDriver correctamente configurado")
+        vprint(">>> WebDriver correctamente configurado")
         # Cargamos la web
         driver.get(STOCKS_URL.format(token=TESTING_COUNTRY[-1]))
         driver.implicitly_wait(10)
@@ -142,8 +126,7 @@ class StockScraper:
                 ], country_item.get_attribute("href")
                 token = url.split("/")[-3]
                 countries.append((continent, country, token))
-                if verbose:
-                    print(f">>> {continent} | {country} | {token}")
+                vprint(f">>> {continent} | {country} | {token}")
         # Cerrar el WebDriver
         driver.quit()
         # Si indicamos que NO queremos todos los países, mostrar interfaz
@@ -151,24 +134,15 @@ class StockScraper:
             pass  # TODO: Implementar selección de países (tkinter)
         # Si se indica un 'output_dir', comprobamos que existe Y es un directorio
         if output_dir:
-            output_dir = Path(output_dir)
-            if not output_dir.exists():
-                raise FileNotFoundError(
-                    f"No se ha encontrado el directorio {output_dir!r}"
-                )
-            if not output_dir.is_dir():
-                raise NotADirectoryError(f"{output_dir!r} no es un directorio válido")
+            output_dir = check_path(output_dir, is_dir=True, raises=True)
         else:
-            output_dir = Path.cwd()
+            output_dir = DEFAULT_DATA_DIR
         # Guardamos como CSV
         with open(output_dir / "countries.csv", "w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow(COUNTRIES_CSV_HEADERS)
             writer.writerows(countries)
-        if verbose:
-            print(
-                f">>> Países seleccionados guardados en {output_dir / 'countries.csv'}"
-            )
+        vprint(f">>> Países seleccionados guardados en {output_dir / 'countries.csv'}")
 
     def scrape(
         self,
@@ -182,20 +156,21 @@ class StockScraper:
         """Realiza el scraping de los mercados de valores de los países
 
         'countries' indica qué países se van a consultar. Si es None, o una
-        cadena vacía, tratará de ubicar el archivo 'countries.csv' en el
-        directorio de trabajo, y si no existe, generará uno mediante
-        'choose_countries(all=True)'. Si 'countries' vale 'testing', se usará
-        únicamente el stock de EEUU, a modo de prueba. En caso contrario,
-        'countries' debe ser la ruta al archivo CSV con los países y las URLs
-        de sus mercados, generadas previamente mediante 'choose_countries()'.
+        cadena vacía, tratará de ubicar el archivo 'countries.csv' en la
+        carpeta 'data' del directorio de trabajo, y si no existe, generará uno
+        mediante 'choose_countries(all=True)'. Si 'countries' vale 'testing',
+        se usará únicamente el stock de EEUU, a modo de prueba. En caso
+        contrario, 'countries' debe ser la ruta al archivo CSV con los países y
+        las URLs de sus mercados, generadas previamente mediante
+        'choose_countries()'.
 
         'loops' indica el número de veces que se realizará el scraping,
-        esperando 'wait' minutos entre cada iteración (mínimo, 5, para respetar
+        esperando 'wait' minutos entre cada iteración (mínimo, 3, para respetar
         la política de uso de la web).
 
         'output_dir' debe ser la ruta al directorio donde se guardarán los
         resultados en formato CSV, 'results.csv'. Si no se indica nada, se
-        guardará en el directorio de trabajo.
+        guardará en el la carepta 'data' del directorio de trabajo.
 
         'verbose' indica si se mostrarán mensajes informativos durante la
         ejecución.
@@ -204,72 +179,62 @@ class StockScraper:
         países seleccionados, y el instante en el que fueron descargados.
 
         """
-        # Comprobamos 'countries' y generamos la lista de países
-        _countries_path = countries
-        countries = []
+        if verbose:
+            vprint.set()
 
-        if _countries_path == "testing":
-            countries.append(TESTING_COUNTRY)
+        # Comprobamos 'countries' y generamos la lista de países
+        if countries == "testing":
+            countries = [TESTING_COUNTRY]
+            vprint(">>> Modo de prueba activado, sólo se consultará el mercado de EEUU")
         else:
-            if not _countries_path:
+            if not countries:
                 # Busca primero en el directorio de trabajo actual
-                _countries_path = Path.cwd() / "countries.csv"
-                if not _countries_path.exists():
-                    # Si no existe, se generan los países
-                    self.choose_countries(all=True)
-                    _countries_path = Path.cwd() / "countries.csv"
-            # Comprueba que el archivo está disponible y carga los países
-            if not _countries_path.exists():
-                raise FileNotFoundError(
-                    f"No se ha encontrado el archivo de países {_countries_path!r}"
-                )
-            with open(_countries_path) as file:
+                if not check_path(DEFAULT_DATA_DIR / "countries.csv"):
+                    # Si no existe, se generan los países desde 0
+                    vprint(">>> No existe archivo de países, generando...")
+                    self.choose_countries(all=True, verbose=verbose)
+                countries_path = DEFAULT_DATA_DIR / "countries.csv"
+            # Si sí se indica un path, se comprueba que exista
+            countries_path = check_path(countries_path, raises=True)
+            vprint(">>> Usando archivo de países", countries_path)
+            # Y, finalmente, se carga la lista de países
+            countries = []
+            with open(countries_path) as file:
                 reader = csv.reader(file)
                 next(reader)  # Salta la cabecera
                 countries.extend(reader)
-            if verbose:
-                print(">>> Usando archivo de países", _countries_path)
-        if verbose:
-            print(f">>> Se consultarán mercados de {len(countries)} países")
+        n_countries = len(countries)
+        vprint(f">>> Se consultarán mercados de {n_countries} países")
 
         # Ejecutamos el scraping, 'loops' veces, esperando 'wait' minutos
-        wait = max(wait, 5.0)
+        wait = max(wait, T_MIN_WAIT)
         results = []
         for i in range(loops):
-            if verbose:
-                print(f"\n>>> Iteración {i + 1} de {loops} ({(i+1)/loops:.0%})")
+            vprint(f"\n>>> Iteración {i + 1} de {loops} ({i/loops:.0%})")
             # Iniciamos el contador de tiempo
             tstart = perf_counter()
             timestamp = time()
             # Por cada país, realizamos el scraping
             for j, (continent, country, url_token) in enumerate(countries, start=1):
                 url = STOCKS_URL.format(token=url_token)
-                if verbose:
-                    print(f">>> [{j:02}/{len(countries)}] Consultando {url!r}")
+                _p = j / n_countries
+                vprint(f">>> {_p:.2%}  {j:02}/{n_countries}  -  Consultando {url!r}")
                 for row in self._url_scrape(url):
                     results.append((timestamp, continent, country, *row))
-                if verbose:
-                    print(
-                        f">>>  \\ {len(results)} filas totales (última: {results[-1]})"
-                    )
-            print(f">>> Iteración finalizada en {perf_counter()-tstart:.2f} segundos")
+                vprint(f">>> {len(results)} filas totales (última: {results[-1]})")
+            vprint(
+                f">>> Iteración {i + 1} finalizada en {perf_counter()-tstart:.2f} segundos"
+            )
             # Si quedan iteraciones, esperamos 'wait' minutos
             if i < loops - 1:
-                if verbose:
-                    print(f">>> Esperando {wait} minutos...")
+                vprint(f">>> Esperando {wait} minutos a la siguiente iteración...")
                 sleep(wait * 60)
 
         # Guardamos los resultados en un CSV
         if output_dir:
-            output_dir = Path(output_dir)
-            if not output_dir.exists():
-                raise FileNotFoundError(
-                    f"No se ha encontrado el directorio {output_dir!r}"
-                )
-            if not output_dir.is_dir():
-                raise NotADirectoryError(f"{output_dir!r} no es un directorio válido")
+            output_dir = check_path(output_dir, is_dir=True, raises=True)
         else:
-            output_dir = Path.cwd()
+            output_dir = DEFAULT_DATA_DIR
         with open(
             output_dir / "results.csv", "w", newline="", encoding="utf-8"
         ) as file:
@@ -298,7 +263,7 @@ class StockScraper:
             options.add_argument("--headless")
             return webdriver.Chrome(executable_path=self._executable, options=options)
 
-    def _url_scrape(self, url: str) -> tuple[tuple]:
+    def _url_scrape(self, url: str) -> list[ScrapedRow]:
         """Realiza el scraping de una URL de mercado de valores
 
         Utiliza BeautifulSoup para analizar el HTML de la página.
@@ -324,14 +289,24 @@ class StockScraper:
             # Volumen de la acción
             volume = q_normalize(cells[TD_IDX_STOCK_VOLUME].text)
             # Capitalización de mercado
-            market_cap_raw, *_ = cells[TD_IDX_MARKET_CAP].text.split()
-            try:
-                market_cap = q_normalize(market_cap_raw)
-            except ValueError:
-                # ERROR: El valor es nulo, habrá que manejarlo en el futuro
+            market_cap_raw = "".join(cells[TD_IDX_MARKET_CAP].text.split()[:-1])
+            if not market_cap_raw:
                 market_cap = None
+            else:
+                market_cap = q_normalize(market_cap_raw)
             # Sector/es
             sector = cells[TD_IDX_SECTOR].text
+            sector = sector if sector != "—" else None
             # Almacenar datos
-            data.append((symbol, name, price, currency, volume, market_cap, sector))
-        return tuple(data)
+            data.append(
+                (
+                    symbol,
+                    name,
+                    round(price, 6),
+                    currency,
+                    round(volume, 6),
+                    round(market_cap, 6) if market_cap else market_cap,
+                    sector,
+                )
+            )
+        return data
