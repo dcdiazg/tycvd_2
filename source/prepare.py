@@ -21,19 +21,29 @@ def setup() -> WebDriver:
     choice = config["webdriver"]["driver"]
     if not local:
         if choice == "chrome":
+            from selenium.webdriver.chrome.options import Options
             from selenium.webdriver.chrome.service import Service
             from webdriver_manager.chrome import ChromeDriverManager
 
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+            options = Options()
+            options.add_argument("--headless")
+            driver = webdriver.Chrome(
+                service=Service(ChromeDriverManager().install()),
+                options=options,
+            )
         elif choice == "chromium":
+            from selenium.webdriver.chrome.options import Options
             from selenium.webdriver.chrome.service import Service
             from webdriver_manager.chrome import ChromeDriverManager
             from webdriver_manager.core.os_manager import ChromeType
 
+            options = Options()
+            options.add_argument("--headless=new")
             driver = webdriver.Chrome(
                 service=Service(
                     ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
-                )
+                ),
+                options=options,
             )
         elif choice == "edge":
             from selenium.webdriver.edge.service import Service
@@ -72,4 +82,5 @@ def prepare():
             country, url = country_item.text.split("\n")[0], country_item.get_attribute(
                 "href"
             )
-            print(">>>", country, continent, url)
+            token = url.split("/")[-3]
+            print(f">>> {continent} | {country} | {token}")
