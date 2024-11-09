@@ -23,6 +23,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
+from source.countries_selector_wizard import CountriesSelector
 from source.utils import check_path, q_normalize, vprint
 
 ScrapedRow = tuple[str, str, float, str, float, float | None, str | None]
@@ -99,7 +100,7 @@ class StockScraper:
 
         """
         if verbose:
-            vprint.set = True
+            vprint.set()
 
         countries = []
         # Setup del WebDriver, modo silencioso
@@ -131,7 +132,14 @@ class StockScraper:
         driver.quit()
         # Si indicamos que NO queremos todos los países, mostrar interfaz
         if not all:
-            pass  # TODO: Implementar selección de países (tkinter)
+            vprint(">>> Mostrando interfaz para seleccionar países...")
+            app = CountriesSelector(countries)
+            app.mainloop()
+            countries = [
+                (continent, country, token)
+                for (continent, country, token), var in app.check_vars.items()
+                if var.get()
+            ]
         # Si se indica un 'output_dir', comprobamos que existe Y es un directorio
         if output_dir:
             output_dir = check_path(output_dir, is_dir=True, raises=True)

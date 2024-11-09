@@ -5,12 +5,15 @@ import argparse
 
 from source import StockScraper
 
+USE_COUNTRIES_SELECTOR = "<<use_countries_selector>>"
+
 
 def setup() -> argparse.ArgumentParser:
     """Setup de los comandos válidos
 
     -v --verbose
     -c --countries <path-to-countries-csv>
+    -a --all-countries
     -o --output <path-to-dir-where-to-put-the-output-csv>
     -l --loops <loops-to-make>
     -w --wait <time-to-wait-in-minutes>
@@ -30,12 +33,29 @@ def setup() -> argparse.ArgumentParser:
         help="Muestra información detallada durante la ejecución",
     )
     # -c --countries
+    # Si no se proporciona, busca el del 'data' o genera uno
+    # Si se proporciona sin argumento, abre el selector de países
+    # Si se proporciona con argumento, usa el archivo CSV apuntado
     parser.add_argument(
         "-c",
         "--countries",
+        nargs="?",
         type=str,
+        const=USE_COUNTRIES_SELECTOR,
         default="",
-        help="Ruta al archivo CSV con los países de los que extraer datos",
+        help="""
+            Ruta al archivo CSV con los países de los que extraer datos
+            Si no se proporciona, buscará el local, o generará uno nuevo con
+            todos los países.
+            Si se proporciona sin argumento, abrirá el selector de países.
+        """,
+    )
+    # -a --all-countries
+    parser.add_argument(
+        "-a",
+        "--all-countries",
+        action="store_true",
+        help="Fuerza a usar todos los países disponibles (ignora el archivo CSV)",
     )
     # -o --output
     parser.add_argument(
@@ -74,12 +94,18 @@ def run() -> None:
     """Función principal del cliente de línea de comandos"""
     parser = setup()
     args = parser.parse_args()
+    scraper = StockScraper()
 
     if args.testing:
-        scraper = StockScraper()
         scraper.scrape("testing", verbose=True)
     else:
-        scraper = StockScraper()
+        if args.all_countries:
+            scraper.choose_countries(all=True, verbose=args.verbose)
+            args.countries = ""
+        elif args.countries == USE_COUNTRIES_SELECTOR:
+            scraper.choose_countries(verbose=args.verbose)
+            args.countries = ""  # Para que use el archivo generado
+
         scraper.scrape(
             args.countries,
             loops=args.loops,
