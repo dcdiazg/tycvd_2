@@ -20,11 +20,11 @@ def check_path(
     path = Path(path)
     if not path.exists():
         if raises:
-            raise FileNotFoundError(f"No se encontró la ruta: {path}")
+            raise FileNotFoundError(f"La ruta requerida {path} no existe")
         return None
     if is_dir and not path.is_dir():
         if raises:
-            raise NotADirectoryError(f"No es un directorio: {path}")
+            raise NotADirectoryError(f"La ruta requerida {path} debe ser un directorio")
         return None
     return path
 
@@ -57,24 +57,41 @@ def q_normalize(svalue: str) -> float:
         return float(svalue)
 
 
-class _VerbosePrinter:
-    """Clase auxiliar para imprimir mensajes sólo en modo 'verbose'
+class VerbosePrinter:
+    """Clase para imprimir mensajes en función de los diferentes niveles
+    de verbosidad.
 
-    Define un único objeto 'vprint' que se debe utilizar para imprimir de
-    forma equivalente a 'print', pero sólo lo hará si se configuró previamente
-    'vprint.verbose = True' o 'vprint.set()'.
+    Define tres niveles:
+    - 0: No imprime nada
+    - 1: Imprime sólo mensajes INFO
+    - 2: Imprime mensajes INFO y DEBUG
+
+    Para imprimir, se definen los métodos 'info' y 'debug', que pueden
+    recibir los mismos argumentos que un 'print' normal; pero sólo funcionarán
+    si el nivel de verbosidad es suficiente.
+
+    El constructor recibe el nivel de verbosidad inicial, que por defecto es 1.
+    Se puede cambiar sobre la marcha con el método 'set'.
 
     """
 
-    def __init__(self) -> None:
-        self.verbose = False
+    def __init__(self, mode: int = 1) -> None:
+        self._mode = mode
 
-    def set(self, verbose: bool = True) -> None:
-        self.verbose = verbose
+    def set(self, mode: int) -> None:
+        """Cambia el nivel de verbosidad"""
+        self._mode = mode
 
-    def __call__(self, *args, **kwargs) -> None:
-        if self.verbose:
+    def info(self, *args, **kwargs) -> None:
+        """Imprime un mensaje INFO"""
+        if self._mode >= 1:
             print(*args, **kwargs)
 
+    def debug(self, *args, **kwargs) -> None:
+        """Imprime un mensaje DEBUG"""
+        if self._mode >= 2:
+            print(*args, **kwargs)
 
-vprint = _VerbosePrinter()
+    def __call__(self, *args, **kwargs) -> None:
+        """Permite llamar a la instancia directamente para imprimir mensajes INFO"""
+        return self.info(*args, **kwargs)

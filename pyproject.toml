@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tycvd"
+name = "stockscraper"
 version = "0.1.0"
 description = "Práctica para Tipología y Ciclo de Vida de los Datos"
 authors = ["Diana Díaz <dcdiazgo@uoc.edu>, Ángel Moreno <amoreno8@uoc.edu>"]

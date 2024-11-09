@@ -1,3 +1,6 @@
+# Local
+*.csv
+
 # PyEnv
 .python-version
 

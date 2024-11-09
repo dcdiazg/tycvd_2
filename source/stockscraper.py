@@ -17,14 +17,13 @@ import requests
 from bs4 import BeautifulSoup
 from more_itertools import chunked
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from webdriver_manager.chrome import ChromeDriverManager
 
 from source.countries_selector_wizard import CountriesSelector
-from source.utils import check_path, q_normalize, vprint
+from source.utils import VerbosePrinter, check_path, q_normalize
 
 ScrapedRow = tuple[str, str, float, str, float, float | None, str | None]
 
@@ -56,19 +55,31 @@ TD_IDX_SECTOR = -2
 
 T_MIN_WAIT = 3.0
 
+VERBOSE_SILENT = 0
+VERBOSE_NORMAL = 1
+VERBOSE_DEBUG = 2
+
 
 class StockScraper:
     """Realiza webscraping de datos de acciones de bolsas de valores
 
-    El constructor puede recibir, como único argument, la ruta al ejecutable
-    del WebDriver requerido para Selenium (sólo se admite Chrome). En caso de
-    no indicarse ninguno, se utilizará la librería 'webdriver-manager' para
-    obtenerlo.
+    El constructor argumento opcional la ruta a un ejecutable de ChromeDriver,
+    para cuando se use Selenium. Por defecto, lo descargará automáticamente
+    mediante 'webdriver_manager'. También se puede especificar el nivel de
+    verbosidad de los mensajes de salida. Un nivel 0 desactiva todos, un nivel
+    1 (por defecto) muestra mensajes informativos, y un nivel 2 muestra
+    mensajes de depuración.
 
     """
 
-    def __init__(self, selenium_webdriver_executable: Path | str = "") -> None:
+    def __init__(
+        self,
+        selenium_webdriver_executable: Path | str = "",
+        *,
+        verbose_mode: int = VERBOSE_NORMAL,
+    ) -> None:
         self._executable = selenium_webdriver_executable
+        self._verbose = verbose_mode
 
     # Público
 
@@ -77,7 +88,6 @@ class StockScraper:
         *,
         all: bool = False,
         output_dir: str | Path | None = None,
-        verbose: bool = False,
     ) -> None:
         """Permite escoger los países de cuyos mercados se desean obtener
         datos.
@@ -93,20 +103,17 @@ class StockScraper:
         trabajo, pero se puede modificar la ruta de salida con el argumento
         'output_dir'.
 
-        Si 'verbose' es True, se mostrarán mensajes informativos durante la
-        ejecución.
-
         No se devuelve ningún valor.
 
         """
-        if verbose:
-            vprint.set()
+        vprint = VerbosePrinter(self._verbose)
 
         countries = []
         # Setup del WebDriver, modo silencioso
         driver = self._setup_webdriver()
-        vprint(">>> WebDriver correctamente configurado")
+        vprint.debug("WebDriver correctamente configurado")
         # Cargamos la web
+        vprint.info("Cargando todos los países disponibles...")
         driver.get(STOCKS_URL.format(token=TESTING_COUNTRY[-1]))
         driver.implicitly_wait(10)
         # Clicamos el botón de "US stocks", que nos lleva a un menú para seleccionar países
@@ -127,12 +134,12 @@ class StockScraper:
                 ], country_item.get_attribute("href")
                 token = url.split("/")[-3]
                 countries.append((continent, country, token))
-                vprint(f">>> {continent} | {country} | {token}")
+                vprint.debug(f"{continent} | {country} | {token}")
         # Cerrar el WebDriver
         driver.quit()
         # Si indicamos que NO queremos todos los países, mostrar interfaz
         if not all:
-            vprint(">>> Mostrando interfaz para seleccionar países...")
+            vprint.debug("Mostrando interfaz para seleccionar países...")
             app = CountriesSelector(countries)
             app.mainloop()
             countries = [
@@ -150,7 +157,9 @@ class StockScraper:
             writer = csv.writer(file)
             writer.writerow(COUNTRIES_CSV_HEADERS)
             writer.writerows(countries)
-        vprint(f">>> Países seleccionados guardados en {output_dir / 'countries.csv'}")
+        vprint.info(
+            f"Nueva selección de países guardada en {output_dir / 'countries.csv'}"
+        )
 
     def scrape(
         self,
@@ -187,24 +196,25 @@ class StockScraper:
         países seleccionados, y el instante en el que fueron descargados.
 
         """
-        if verbose:
-            vprint.set()
+        vprint = VerbosePrinter(self._verbose)
 
         # Comprobamos 'countries' y generamos la lista de países
         if countries == "testing":
             countries = [TESTING_COUNTRY]
-            vprint(">>> Modo de prueba activado, sólo se consultará el mercado de EEUU")
+            vprint.info("Modo prueba activado, sólo se consultará el mercado de EEUU")
         else:
             if not countries:
                 # Busca primero en el directorio de trabajo actual
                 if not check_path(DEFAULT_DATA_DIR / "countries.csv"):
                     # Si no existe, se generan los países desde 0
-                    vprint(">>> No existe archivo de países, generando...")
+                    vprint.info("No existe archivo de países, generando uno nuevo...")
                     self.choose_countries(all=True, verbose=verbose)
                 countries_path = DEFAULT_DATA_DIR / "countries.csv"
+            else:
+                countries_path = Path(countries)
             # Si sí se indica un path, se comprueba que exista
             countries_path = check_path(countries_path, raises=True)
-            vprint(">>> Usando archivo de países", countries_path)
+            vprint.info("Usando archivo de países", countries_path)
             # Y, finalmente, se carga la lista de países
             countries = []
             with open(countries_path) as file:
@@ -212,45 +222,48 @@ class StockScraper:
                 next(reader)  # Salta la cabecera
                 countries.extend(reader)
         n_countries = len(countries)
-        vprint(f">>> Se consultarán mercados de {n_countries} países")
+        vprint.info(f"Se consultarán mercados de {n_countries} países")
+
+        # Comprobamos que la carpeta de salida exista
+        if output_dir:
+            output_dir = check_path(output_dir, is_dir=True, raises=True)
+        else:
+            output_dir = DEFAULT_DATA_DIR
 
         # Ejecutamos el scraping, 'loops' veces, esperando 'wait' minutos
         wait = max(wait, T_MIN_WAIT)
         results = []
         for i in range(loops):
-            vprint(f"\n>>> Iteración {i + 1} de {loops} ({i/loops:.0%})")
+            vprint.info(f"\nIteración {i + 1} de {loops} ({i/loops:.0%})")
             # Iniciamos el contador de tiempo
             tstart = perf_counter()
             timestamp = time()
             # Por cada país, realizamos el scraping
             for j, (continent, country, url_token) in enumerate(countries, start=1):
                 url = STOCKS_URL.format(token=url_token)
-                _p = j / n_countries
-                vprint(f">>> {_p:.2%}  {j:02}/{n_countries}  -  Consultando {url!r}")
+                _p = (j - 1) / n_countries
+                vprint.info(
+                    f"| {_p: >6.2%}  {j:02}/{n_countries}  -  Consultando {url!r}"
+                )
                 for row in self._url_scrape(url):
                     results.append((timestamp, continent, country, *row))
-                vprint(f">>> {len(results)} filas totales (última: {results[-1]})")
-            vprint(
-                f">>> Iteración {i + 1} finalizada en {perf_counter()-tstart:.2f} segundos"
+                vprint.debug(f"+ {len(results)} filas totales (última: {results[-1]})")
+            vprint.info(
+                f"Iteración {i + 1} finalizada en {perf_counter()-tstart:.2f} segundos"
             )
             # Si quedan iteraciones, esperamos 'wait' minutos
             if i < loops - 1:
-                vprint(f">>> Esperando {wait} minutos a la siguiente iteración...")
+                vprint.info(f"Esperando {wait} minutos a la siguiente iteración...")
                 sleep(wait * 60)
 
         # Guardamos los resultados en un CSV
-        if output_dir:
-            output_dir = check_path(output_dir, is_dir=True, raises=True)
-        else:
-            output_dir = DEFAULT_DATA_DIR
         with open(
             output_dir / "results.csv", "w", newline="", encoding="utf-8"
         ) as file:
             writer = csv.writer(file)
             writer.writerow(RESULTS_CSV_HEADER)
             writer.writerows(results)
-        if verbose:
-            print(f"\n>>> Resultados guardados en {output_dir / 'results.csv'}")
+        vprint.info(f"\nResultados guardados en {output_dir / 'results.csv'}")
         return output_dir / "results.csv"
 
     # Privados
@@ -259,16 +272,20 @@ class StockScraper:
         """Configura el WebDriver de Selenium"""
         if not self._executable:
             service = ChromeDriverManager().install()
-            options = Options()
-            options.add_argument("--headless")
+            options = webdriver.ChromeOptions()
+            options.add_argument("--headless=new")
+            options.add_argument("--log-level=3")
+            options.add_experimental_option("excludeSwitches", ["enable-logging"])
             return webdriver.Chrome(service=Service(service), options=options)
         else:
             if not Path(self._executable).exists():
                 raise FileNotFoundError(
                     f"No se ha encontrado el ejecutable del WebDriver en {self._executable!r}"
                 )
-            options = Options()
-            options.add_argument("--headless")
+            options = webdriver.ChromeOptions()
+            options.add_argument("--headless=new")
+            options.add_argument("--log-level=3")
+            options.add_experimental_option("excludeSwitches", ["enable-logging"])
             return webdriver.Chrome(executable_path=self._executable, options=options)
 
     def _url_scrape(self, url: str) -> list[ScrapedRow]:

@@ -1,0 +1,14 @@
+scrape.py --testing
+scrape.py --testing -c  # -c debe ignorarse
+
+scrape.py               # Verbose = INFO
+scrape.py -v            # Verbose = DEBUG
+scrape.py --quiet       # Verbose = NONE
+
+scrape.py -c            # Seleccionador de países
+scrape.py -c "C:\Users\angel\Playground\countries.csv"     # Usar dicho archivo de países
+scrape.py -c "C:\Users\angel\Playground\countries.csv" --all-countries  # Ignorar -c y usar todos los países
+scrape.py -c "C:\Users\angel\Playground\countries.csv" -o "C:\Users\angel\Playground\"  # Carpeta de salida
+
+scrape.py -c "C:\Users\angel\NOEXISTE\countries.csv" -o "C:\Users\angel\Playground\"  # ERROR porque no existe el archivo de países
+scrape.py -c "C:\Users\angel\Playground\countries.csv" -o "C:\Users\angel\Playground\countries.csv"  # ERROR porque la carpeta de salida es un archivo
