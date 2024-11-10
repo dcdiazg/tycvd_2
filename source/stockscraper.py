@@ -272,12 +272,12 @@ class StockScraper:
     def _setup_webdriver(self) -> WebDriver:
         """Configura el WebDriver de Selenium"""
         if not self._executable:
-            service = ChromeDriverManager().install()
+            service = Service(ChromeDriverManager().install())
             options = webdriver.ChromeOptions()
             options.add_argument("--headless=new")
             options.add_argument("--log-level=3")
             options.add_experimental_option("excludeSwitches", ["enable-logging"])
-            return webdriver.Chrome(service=Service(service), options=options)
+            return webdriver.Chrome(service=service, options=options)
         else:
             if not Path(self._executable).exists():
                 raise FileNotFoundError(
