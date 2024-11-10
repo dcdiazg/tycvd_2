@@ -80,6 +80,7 @@ class StockScraper:
     ) -> None:
         self._executable = selenium_webdriver_executable
         self._verbose = verbose_mode
+        DEFAULT_DATA_DIR.mkdir(exist_ok=True)
 
     # Público
 
@@ -208,7 +209,7 @@ class StockScraper:
                 if not check_path(DEFAULT_DATA_DIR / "countries.csv"):
                     # Si no existe, se generan los países desde 0
                     vprint.info("No existe archivo de países, generando uno nuevo...")
-                    self.choose_countries(all=True, verbose=verbose)
+                    self.choose_countries(all=True)
                 countries_path = DEFAULT_DATA_DIR / "countries.csv"
             else:
                 countries_path = Path(countries)
