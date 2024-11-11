@@ -1,0 +1,69 @@
+Continent,Country,URLToken
+North America,USA,stocks-usa
+North America,Canada,stocks-canada
+Europe,Austria,stocks-austria
+Europe,Belgium,stocks-belgium
+Europe,Switzerland,stocks-switzerland
+Europe,Cyprus,stocks-cyprus
+Europe,Czech Republic,stocks-czech
+Europe,Germany,stocks-germany
+Europe,Denmark,stocks-denmark
+Europe,Estonia,stocks-estonia
+Europe,Spain,stocks-spain
+Europe,Finland,stocks-finland
+Europe,France,stocks-france
+Europe,Greece,stocks-greece
+Europe,Hungary,stocks-hungary
+Europe,Ireland,stocks-ireland
+Europe,Iceland,stocks-iceland
+Europe,Italy,stocks-italy
+Europe,Lithuania,stocks-lithuania
+Europe,Latvia,stocks-latvia
+Europe,Luxembourg,stocks-luxembourg
+Europe,Netherlands,stocks-netherlands
+Europe,Norway,stocks-norway
+Europe,Poland,stocks-poland
+Europe,Portugal,stocks-portugal
+Europe,Serbia,stocks-serbia
+Europe,Russia,stocks-russia
+Europe,Romania,stocks-romania
+Europe,Sweden,stocks-sweden
+Europe,Slovakia,stocks-slovakia
+Europe,Turkey,stocks-turkey
+Europe,United Kingdom,stocks-united-kingdom
+Middle East / Africa,United Arab Emirates,stocks-uae
+Middle East / Africa,Bahrain,stocks-bahrain
+Middle East / Africa,Egypt,stocks-egypt
+Middle East / Africa,Israel,stocks-israel
+Middle East / Africa,Kenya,stocks-kenya
+Middle East / Africa,Kuwait,stocks-kuwait
+Middle East / Africa,Morocco,stocks-morocco
+Middle East / Africa,Nigeria,stocks-nigeria
+Middle East / Africa,Qatar,stocks-qatar
+Middle East / Africa,Saudi Arabia,stocks-ksa
+Middle East / Africa,Tunisia,stocks-tunisia
+Middle East / Africa,South Africa,stocks-south-africa
+Mexico And South America,Argentina,stocks-argentina
+Mexico And South America,Brazil,stocks-brazil
+Mexico And South America,Chile,stocks-chile
+Mexico And South America,Colombia,stocks-colombia
+Mexico And South America,Mexico,stocks-mexico
+Mexico And South America,Peru,stocks-peru
+Mexico And South America,Venezuela,stocks-venezuela
+Asia / Pacific,Australia,stocks-australia
+Asia / Pacific,Bangladesh,stocks-bangladesh
+Asia / Pacific,China,stocks-china
+Asia / Pacific,Hong Kong,stocks-hong-kong
+Asia / Pacific,Indonesia,stocks-indonesia
+Asia / Pacific,India,stocks-india
+Asia / Pacific,Japan,stocks-japan
+Asia / Pacific,South Korea,stocks-korea
+Asia / Pacific,Sri Lanka,stocks-sri-lanka
+Asia / Pacific,Malaysia,stocks-malaysia
+Asia / Pacific,New Zealand,stocks-new-zealand
+Asia / Pacific,Philippines,stocks-philippines
+Asia / Pacific,Pakistan,stocks-pakistan
+Asia / Pacific,Singapore,stocks-singapore
+Asia / Pacific,Thailand,stocks-thailand
+Asia / Pacific,Taiwan,stocks-taiwan
+Asia / Pacific,Vietnam,stocks-vietnam
