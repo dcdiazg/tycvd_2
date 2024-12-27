@@ -1,0 +1,316 @@
+---
+title: "Práctica Final Tipología y Ciclo de Vida de los Datos"
+author: "Diana Carolina Díaz Gordillo, Ángel Moreno Prieto"
+date: "2024-12-22"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+  word_document: default
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
+```
+
+```{r message=FALSE, warning=FALSE}
+# Instalación de diferentes paquetes que serán necesarios
+if (!require("ggplot2")) install.packages("ggplot2")
+library(ggplot2)
+if (!require("dplyr")) install.packages("dplyr")
+library(dplyr)
+```
+
+# Introducción
+
+En esta segunda parte de la práctica procederemos al preprocesado y análisis de los datos generados durante la primera parte.
+
+## Descripción del dataset
+
+(...)
+
+También usaremos otro dataset auxiliar, *exchange_rates_usd.csv*, con los cambios de divisa respecto al dólar, actualizado a fecha del 27 de diciembre de 2024, y obtenidos a través de la web https://exchangerate.host/.
+
+# Preprocesado
+
+## Integración y selección
+
+Cargamos el juego de datos principa, preparado durante la primera parte de la práctica, con los índices de acciones mundiales entre XXX y YYY, en intervalos de Z minutos:
+
+```{r message=FALSE, warning=FALSE}
+df <- read.csv("./data/results.csv", stringsAsFactors = FALSE)
+summary(df)
+dim(df)
+```
+
+Renombramos algunas variables, para simplifcar su manejo en R:
+
+```{r message=FALSE, warning=FALSE}
+names(df)[names(df) == "Market.Cap..M."] <- "MarketCap"
+names(df)[names(df) == "Volume..M."] <- "Volume"
+names(df)
+```
+
+## Limpieza de valores nulos
+
+En primer lugar, comprobaremos qué variables presentan valores nulos (`NA`) o vacíos (`""`):
+
+```{r message=FALSE, warning=FALSE}
+na_counts <- sapply(df, function(x) sum(is.na(x) | x == ""))
+print(na_counts)
+```
+
+Encontramos tres con estas características: `Symbol`, `MarketCap` y `Sector`. Dado el tipo de dato y la relevancia de cada variable en el dataset, el enfoque que tomaremos para limpiarlas será diferente:
+
+* `Symbol`: Es una variable puramente descriptiva, que sólo complementa al nombre de la empresa (`Name`). Cambiaremos los nulos o vacíos por el propio contenido de la variable `Name`.
+* `MarketCap`: Es una de las variables que dan información real de la situación de mercado de la empresa. Su ausencia puede deberse a que dicho valor no es público o es desconocido; sin embargo, no podemos fijarlo a 0, ni tampoco deberíamos inferirlo a partir del resto de registros, ya que estos son, en esencia, casos independientes. Sumado a que no tenemos demasiados registros en esta situación (apenas un 3%), la decisión será eliminarlos.
+* `Sector`: Es una variable potencialmente categórica, dado que disponemos de un número de valores posibles finitos y homogéneos. La solución que tomaremos será una categoría extra, "Indefinido" (`Undefined`), que agrupe todos estos casos.
+
+```{r message=FALSE, warning=FALSE}
+df$Symbol[is.na(df$Symbol)] <- df$Name[is.na(df$Symbol)]
+df$Sector[df$Sector == "" | is.na(df$Sector)] <- "Undefined"
+df <- df[!is.na(df$MarketCap),]
+
+na_counts <- sapply(df, function(x) sum(is.na(x) | x == ""))
+print(na_counts)
+```
+
+## Conversión de tipos de datos
+
+Como adelántabamos en el apartado anterior, `Sector` es una variable potencialmente categórica, así que la convertiremos a una:
+
+```{r message=FALSE, warning=FALSE}
+df$Sector <- as.factor(df$Sector)
+summary(df$Sector)
+```
+
+Observamos también que la categoría extraordinaria "Indefinido", que añadimos previamente para sustituir los casos nulos, ha desaparecido; probablemente porque se ha eliminado junto con los registros que tenían `MarketCap` nulo.
+
+Otra variable que también podemos señalar como categórico y que, además, será crítica para poder trabajar con todos los registros como un conjunto único, es `Currency` ("Divisa"):
+
+```{r message=FALSE, warning=FALSE}
+df$Currency <- as.factor(df$Currency)
+summary(df$Currency)
+length(unique(df$Currency))
+```
+
+Disponemos de unas 50 divisas diferentes, en las que están definidos tanto el precio (`Price`) como el valor de mercado (`MarketCap`) de cada una de las empresas, algo que nos impide completamente comparar y operar con los diferentes registros. Para corregir esta situación, crearemos dos nuevas variables, `PriceUSD` y `MarketCapUSD`, que representarán el valor de su precio y su capitalización bursátil, respectivamente, en dólares americanos (`USD`). 
+
+Para efectuar la conversión, usaremos el dataset antes mencionado, *exchange_rates_usd.csv*. En este disponemos de dos variables, `Currency`, y `USD`, donde el primero es el símbolo de la moneda extranjera, y el segundo es su valor en dólares. Por lo tanto, una vez cargado el juego de datos, bastará con dividir `Price` y `MarketCap` por dicho valor, para la moneda adecuada:
+
+```{r message=FALSE, warning=FALSE}
+erl <- read.csv("./data/exchange_rates_usd.csv", stringsAsFactors = FALSE)
+head(erl)
+
+df <- df %>%
+  left_join(erl, by = "Currency") %>%
+  mutate(
+    PriceUSD = Price / USD,
+    MarketCapUSD = MarketCap / USD
+  ) %>%
+  select(-USD)
+
+summary(df)
+```
+
+Con la conversión, han aparecido nuevos valores nulos; es de esperar que sea porque la divisa no se ha encontrado en el dataset de ratios de cambio. Listamos estos casos:
+
+```{r message=FALSE, warning=FALSE}
+unique(df$Currency[is.na(df$PriceUSD)])
+```
+
+Los cuatro casos son similares: son divisiones de la moneda real del país, usadas como sustituto en mercados bursátiles para poder trabajar con valor más pequeños. En concreto, la conversión son sus monedas reales es:
+
+* 1 GBX -> 0.01 GBP (libras esterlinas, https://www.edmondsinvestments.co.uk/gbp-vs-gbx/)
+* 1 ILA -> 0.01 ILS (shekel israelí, https://www.marketscreener.com/quote/currency/ILA-ILS-25297565/)
+* 1 KWF -> 0.001 KWD (dinar kuwaití, https://www.tradingview.com/symbols/KWFKWD/)
+* 1 ZAC -> 0.01 ZAR (rand sudafricano, https://www.marketscreener.com/quote/currency/SOUTH-AFRICAN-CENTS-SOUTH-33957892/)
+
+En consecuencia, bastará con, en primer lugar, convertir de una moneda a otra, y, de ahí, volver a aplicar la conversión al dólar. Esto tendremos que hacerlo en `Price`; en `MarketCap`, la divisa sí es la adecuada (observable en la web original de los datos):
+
+```{r message=FALSE, warning=FALSE}
+adjustments <- data.frame(
+  orig = c("GBX", "ILA", "KWF", "ZAC"),
+  dest = c("GBP", "ILS", "KWD", "ZAR"),
+  mult = c(0.01, 0.01, 0.001, 0.01)
+)
+
+df <- df %>%
+  left_join(adjustments, by = c("Currency" = "orig")) %>%
+  mutate(
+    Price = ifelse(!is.na(mult), Price * mult, Price),
+    Currency = ifelse(!is.na(dest), dest, Currency)
+  ) %>%
+  select(-dest, -mult) %>%
+  left_join(erl, by = "Currency") %>%
+  mutate(
+    PriceUSD = Price / USD,
+    MarketCapUSD = MarketCap / USD
+  ) %>%
+  select(-USD)
+
+summary(df)
+```
+
+En última instancia, nos quedaremos con una tabla de las siguientes dimensiones:
+
+```{r message=FALSE, warning=FALSE}
+dim(df)
+```
+
+
+## Gestión de valores extremos
+
+Analizaremos la distribución de valores de las variables numéricas más importantes, esto es, `Price`, `Volume` y `MarketCap`.
+
+### `Price` (en dólares)
+Para el precio, usaremos la variable `PriceUSD`, que es la que tiene los valores normalizados en dólares. Este es el precio al que cotiza la acción en un instante dado:
+
+```{r message=FALSE, warning=FALSE}
+ggplot(df, aes(x = PriceUSD)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "white") +
+  labs(title = "Precio (USD)", x = "Valor", y = "Total") +
+  theme_minimal()
+```
+
+Observamos que la tendencia es a que la mayoría de precios tiendan a 0, lógico, ya que el precio *de una sola acción* no puede ser excesivamente alto. Sin embargo, parece que también tenemos precios que llegan a los miles de dólares. Esto lo podemos observar mejor utilizando una escala logarítmica en el eje de las X:
+
+```{r message=FALSE, warning=FALSE}
+ggplot(df, aes(x = PriceUSD)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "white") +
+  scale_x_log10(breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000)) +
+  labs(title = "Precio (USD)", x = "Valor", y = "Total") +
+  theme_minimal()
+```
+
+La mayor concentración es, como podíamos esperar, cercana a la unidad / decena; mientras que podemos identificar casos extremos (por debajo de las 200 muestras), por debajo de ~0.05 dólares, y por encima de ~$500 dólares por acción.
+
+Podemos mostrar estos casos extremos, con el fin de comprobar si son errores, que pueden haberse dado durante la fase de recolección de datos, o durante la de conversió; o si simplemente son particularidades de ciertos tipos de mercado:
+
+```{r message=FALSE, warning=FALSE}
+topn <- df %>%
+  arrange(desc(PriceUSD)) %>%
+  slice_head(n = 20) %>%
+  select(Symbol, Country, PriceUSD, Sector)
+topn
+
+botn <- df %>%
+  arrange(PriceUSD) %>%
+  slice_head(n = 20) %>%
+  select(Symbol, Country, PriceUSD, Sector)
+botn
+```
+
+En el caso de los mayores precios, existe bastante variedad, tanto de países, como de sectores, así que no podemos garantizar que sean valores extremos. En el caso de los menores precios, los resultados sí parecen más concentrados (varias empresas en Rusia y Nigeria), y también los sectores (utilidades y finanzas). Sin embargo, no es suficiente para garantizar que sean datos errados, por lo que, si bien *sí son outliers* en nuestro conjunto, no podemos descartarlos.
+
+### `Volume` (en millones de unidades)
+Como explicamos anteriormente, el volumen representa la cantidad de acciones de una empresa que hay en circulación en el mercado. En este juego de datos, lo presentamos en millones de unidades:
+
+```{r message=FALSE, warning=FALSE}
+ggplot(df, aes(x = Volume)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "white") +
+  labs(title = "Volumen (en millones de acciones)", x = "Valor", y = "Total") +
+  theme_minimal()
+```
+
+Como en el caso de `Price`, mostraremos el resultado también en escala logarítmica, para analizar los posibles *outliers*:
+
+```{r message=FALSE, warning=FALSE}
+ggplot(df, aes(x = Volume)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "white") +
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000)) +
+  labs(title = "Volumen (en millones de acciones)", x = "Valor", y = "Total") +
+  theme_minimal()
+```
+
+Obtenemos unos resultados relativamente más homogéneos, centrados en el millón de unidades, con posibles *outliers* cuando bajamos de las 10.000 acciones, y cuando superamos las 100 millones. De forma paralela al caso anterior, volveremos a mostrar estos registros, por si vemos algún patrón sospechoso:
+
+```{r message=FALSE, warning=FALSE}
+topn <- df %>%
+  arrange(desc(Volume)) %>%
+  slice_head(n = 20) %>%
+  select(Symbol, Country, PriceUSD, Volume, Sector)
+topn
+
+botn <- df %>%
+  arrange(Volume) %>%
+  slice_head(n = 20) %>%
+  select(Symbol, Country, PriceUSD, Volume, Sector)
+botn
+```
+
+En el top de acciones por volumen, volvemos a observar variedad, por lo que no son valores que debamos tratar. De hecho, obtenemos resultados compatibles con los que obteníamos anteriormente: ciertas acciones rusas, que tenían un precio de mercado excepcionalmente bajo, muestran un muy alto volumen de acciones, compensándose.
+
+Sin embargo, en el orden contrario, observamos algo interesante: tenemos varias acciones con volumen de mercado igual a 0. Esto puede deberse a varios motivos, que no necesariamente señalarían un error en los datos, pero, a efectos de este trabajo, se escapa del alcance. Si analizamos cuántos registros muestran esta situación:
+
+```{r message=FALSE, warning=FALSE}
+sum(df$Volume == 0, na.rm = TRUE)
+```
+
+No son una cantidad relevante, así que simplemente nos desharemos de ellas:
+
+```{r message=FALSE, warning=FALSE}
+df <- df[df$Volume != 0,]
+
+botn <- df %>%
+  arrange(Volume) %>%
+  slice_head(n = 20) %>%
+  select(Symbol, Country, PriceUSD, Volume, Sector)
+botn
+```
+
+Y, ahora sí, observamos que tenemos variedad cuando el volumen es mínimo, y que este, además, no desciende de las 10.000 acciones, por lo que no podemos considerar que sean valores *outliers*.
+
+### `MarketCap` (en millones de dólares)
+La capitalización de mercado de una empresa nos señala su dimensión económica, esto es, cuanto más alto sea, con mayor capital puede trabajar dicha empresa. Usaremos la variable `MarketCapUSD`, que tiene el valor normalizado en millones de dólares:
+
+```{r message=FALSE, warning=FALSE}
+ggplot(df, aes(x = MarketCapUSD)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "white") +
+  labs(title = "Capitalización de mercado (en millones de dólares)", x = "Valor", y = "Total") +
+  theme_minimal()
+
+ggplot(df, aes(x = MarketCapUSD)) +
+  geom_histogram(bins = 50, fill = "skyblue", color = "white") +
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000)) +
+  labs(title = "Capitalización de mercado (en millones de dólares)", x = "Valor", y = "Total") +
+  theme_minimal()
+```
+
+Volvemos a obtener, con escala logarítmica, una forma normal, centrada en los ~1000M de dólares. Llaman la atención los valores inferiores: parece que puede haber registros con un `MarketCap` igual a 0:
+
+```{r message=FALSE, warning=FALSE}
+botn <- df %>%
+  arrange(MarketCapUSD) %>%
+  slice_head(n = 20) %>%
+  select(Country, PriceUSD, Volume, MarketCapUSD, Sector)
+botn
+```
+
+No es el caso: la menor capitalización de mercado la hallamos en los ~630.000 dólares, y, una vez más, tanto los países como los sectores en los que se da son variados, así que no podemos asumir que sean *outliers*.
+
+
+# Análisis de datos
+
+## Modelo supervisado
+(...)
+
+## Modelo no supervisado
+[[[Work In Progress]]]
+
+> Mi idea aquí es hacer quizá K-Means, pero sospecho que habrá que simplificar las categorías de `Sector`
+
+```{r message=FALSE, warning=FALSE}
+ggplot(df, aes(x = PriceUSD, y = Volume, color = Sector)) +
+  geom_point(alpha = 0.7) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Precio VS Volumen", x = "Precio (USD)", y = "Volumen (millones de unidades)") +
+  theme_minimal()
+```
