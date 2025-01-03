@@ -1,19 +1,20 @@
 ---
 title: "Práctica Final Tipología y Ciclo de Vida de los Datos"
 author: "Diana Carolina Díaz Gordillo, Ángel Moreno Prieto"
-date: "2024-12-22"
+date: "2025-01-08"
 output:
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+  word_document: default
   html_document:
     highlight: default
     number_sections: yes
     theme: cosmo
     toc: yes
     toc_depth: 2
-  word_document: default
-  pdf_document:
-    highlight: zenburn
-    toc: yes
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
@@ -25,6 +26,12 @@ if (!require("ggplot2")) install.packages("ggplot2")
 library(ggplot2)
 if (!require("dplyr")) install.packages("dplyr")
 library(dplyr)
+library(car)
+library(corrplot)
+library(cluster)
+library(factoextra)
+library(forcats)
+
 ```
 
 # Introducción
@@ -33,23 +40,42 @@ En esta segunda parte de la práctica procederemos al preprocesado y análisis d
 
 ## Descripción del dataset
 
-(...)
+Este conjunto de datos contiene 15215 registros con 10 variables descritas y fue obtenido a través de la web [Trading View](https://www.tradingview.com/markets/stocks-usa/market-movers-active/) mediante *web scraping*. Las variables se incluidas se describen a continuación: 
 
-También usaremos otro dataset auxiliar, *exchange_rates_usd.csv*, con los cambios de divisa respecto al dólar, actualizado a fecha del 27 de diciembre de 2024, y obtenidos a través de la web https://exchangerate.host/.
+* Timestamp (date): Marca de tiempo del scraping.
+* Region (character): Región geográfica de origen de la empresa que ofrece la acción (por ejemplo, Middle East / Africa o Mexico and South America).
+* Country (character): País de origen de la acción.
+* Symbol (character): Símbolo de la acción.
+* Name (character): Nombre de la compañía propietaria de la acción.
+* Price (number): Precio de la acción en el momento del scraping.
+* Currency (character): Moneda de compra.
+* Volume (number): Cantidad de acciones negociadas en un periodo de tiempo específico.
+* Market Cap (number): Tamaño y valor de una empresa, calculado como el total de acciones en circulación multiplicado por el último precio de cierre de sus acciones.
+* Sector (character): Sector al que pertenece la acción, por ejemplo, minerales no energéticos o tecnologías sanitarias.
+
+Además de este conjunto de datos, utilizaremos un conjunto de datos auxiliar, exchange_rates_usd.csv, que contiene los tipos de cambio respecto al dólar actualizados al 27 de diciembre de 2024. Este archivo fue obtenido a través de la web [exchangerate](https://exchangerate.host/).
+
+
+**Importancia del conjunto de datos* 
+
+Este conjunto datos enriquecido es relevante para responder la pregunta: *Se puede predecir el precio de una accion basados en otros indicadores de mercado?*
+
+Su importancia radica en que proporciona una fotografía de los principales índices de las acciones de diferentes mercados financieros a nivel mundial, lo que permite analizar las tendencias en el mercado, identificar patrones y entrenar algoritmos de predicción de evolución de mercado, para obtener información que permita reducir la incertidumbre en las decisiones financieras,
+
 
 # Preprocesado
 
 ## Integración y selección
 
-Cargamos el juego de datos principa, preparado durante la primera parte de la práctica, con los índices de acciones mundiales entre XXX y YYY, en intervalos de Z minutos:
+Cargamos el juego de datos principal, preparado durante la primera parte de la práctica, con los índices de acciones mundiales entre XXX y YYY, en intervalos de Z minutos, obteniendo el siguiente resumen:
 
 ```{r message=FALSE, warning=FALSE}
-df <- read.csv("./data/results.csv", stringsAsFactors = FALSE)
+df <- read.csv("results.csv", stringsAsFactors = FALSE)
 summary(df)
 dim(df)
 ```
 
-Renombramos algunas variables, para simplifcar su manejo en R:
+Renombramos algunas variables, para simplificar su manejo en R:
 
 ```{r message=FALSE, warning=FALSE}
 names(df)[names(df) == "Market.Cap..M."] <- "MarketCap"
@@ -69,8 +95,13 @@ print(na_counts)
 Encontramos tres con estas características: `Symbol`, `MarketCap` y `Sector`. Dado el tipo de dato y la relevancia de cada variable en el dataset, el enfoque que tomaremos para limpiarlas será diferente:
 
 * `Symbol`: Es una variable puramente descriptiva, que sólo complementa al nombre de la empresa (`Name`). Cambiaremos los nulos o vacíos por el propio contenido de la variable `Name`.
+
 * `MarketCap`: Es una de las variables que dan información real de la situación de mercado de la empresa. Su ausencia puede deberse a que dicho valor no es público o es desconocido; sin embargo, no podemos fijarlo a 0, ni tampoco deberíamos inferirlo a partir del resto de registros, ya que estos son, en esencia, casos independientes. Sumado a que no tenemos demasiados registros en esta situación (apenas un 3%), la decisión será eliminarlos.
+
 * `Sector`: Es una variable potencialmente categórica, dado que disponemos de un número de valores posibles finitos y homogéneos. La solución que tomaremos será una categoría extra, "Indefinido" (`Undefined`), que agrupe todos estos casos.
+
+
+Comprobamos que la gestion de los valores nulos se ha completado adecuadamente:
 
 ```{r message=FALSE, warning=FALSE}
 df$Symbol[is.na(df$Symbol)] <- df$Name[is.na(df$Symbol)]
@@ -105,7 +136,7 @@ Disponemos de unas 50 divisas diferentes, en las que están definidos tanto el p
 Para efectuar la conversión, usaremos el dataset antes mencionado, *exchange_rates_usd.csv*. En este disponemos de dos variables, `Currency`, y `USD`, donde el primero es el símbolo de la moneda extranjera, y el segundo es su valor en dólares. Por lo tanto, una vez cargado el juego de datos, bastará con dividir `Price` y `MarketCap` por dicho valor, para la moneda adecuada:
 
 ```{r message=FALSE, warning=FALSE}
-erl <- read.csv("./data/exchange_rates_usd.csv", stringsAsFactors = FALSE)
+erl <- read.csv("exchange_rates_usd.csv", stringsAsFactors = FALSE)
 head(erl)
 
 df <- df %>%
@@ -191,7 +222,7 @@ ggplot(df, aes(x = PriceUSD)) +
 
 La mayor concentración es, como podíamos esperar, cercana a la unidad / decena; mientras que podemos identificar casos extremos (por debajo de las 200 muestras), por debajo de ~0.05 dólares, y por encima de ~$500 dólares por acción.
 
-Podemos mostrar estos casos extremos, con el fin de comprobar si son errores, que pueden haberse dado durante la fase de recolección de datos, o durante la de conversió; o si simplemente son particularidades de ciertos tipos de mercado:
+Podemos mostrar estos casos extremos, con el fin de comprobar si son errores, que pueden haberse dado durante la fase de recolección de datos, o durante la de conversión o si simplemente son particularidades de ciertos tipos de mercado:
 
 ```{r message=FALSE, warning=FALSE}
 topn <- df %>%
@@ -298,19 +329,333 @@ No es el caso: la menor capitalización de mercado la hallamos en los ~630.000 d
 
 # Análisis de datos
 
-## Modelo supervisado
-(...)
 
-## Modelo no supervisado
-[[[Work In Progress]]]
+## Modelo supervisado: Regresion lineal
 
-> Mi idea aquí es hacer quizá K-Means, pero sospecho que habrá que simplificar las categorías de `Sector`
+Para determinar las variables predictoras vamos a hacer un estudio de correlación lineal entre las variables numéricas `PriceUSD`,`Volume` y`MarketCapUSD`.Las variables `MarketCap´y `Price´ no se incluyen porque ya se estan tomando los datos normalizados, con los precios en USD y de esta manera evitamos duplicidad. La variable `Timestamp´ tampoco se toma por no tener relevancia predictiva.
+
+
+### Matriz de correlación
 
 ```{r message=FALSE, warning=FALSE}
-ggplot(df, aes(x = PriceUSD, y = Volume, color = Sector)) +
-  geom_point(alpha = 0.7) +
-  scale_x_log10() +
-  scale_y_log10() +
-  labs(title = "Precio VS Volumen", x = "Precio (USD)", y = "Volumen (millones de unidades)") +
+
+df_l <- df %>% select(-Timestamp, -Region, -Country, -Name, -Currency, -Symbol, -Sector,-Price,-MarketCap)
+
+cor_matrix <- df_l |> cor(use = "pairwise.complete.obs") |> round(4)
+cor_sorted <- cor_matrix[order(abs(cor_matrix[,"PriceUSD"]), decreasing = TRUE),]
+print(cor_matrix)
+```
+Se encuentra una correlacion baja entre las variables, es decir, menor a 0.2, nos indica que puede que estas variables no estan fuertemente relacionadas entre si ademas de tener posiblemente, cierto nivel de independencia. 
+
+También se puede concluir que hay una relación negativa entre el volumen y tanto el precio de las acciones como su capitalización, es decir, a mayor precio, menor volumen y a mayor capitalización, menor volumen.
+
+En cambio, existe una relación positiva entre el precio y la capitalización, es decir, a mayor precio, mayor capitalización.
+
+
+### Generación de los conjuntos de entrenamiento y de test
+
+Separaremos el conjunto de datos en datos de entrenamiento y de prueba. Ajustaremos el modelo de regresión lineal con el conjunto de entrenamiento, y evaluaremos la precisión con el conjunto de prueba, fijando el tamaño de la muestra de entrenamiento a un 80% del original.
+
+
+```{r message=FALSE, warning=FALSE}
+set.seed(123)
+ind <- sample(seq_len(nrow(df_l)), size = round(.8 * dim(df_l)[1]))
+
+training <- df_l[ind, ] 
+testing <- df_l[-ind, ] 
+
+head(training, n=5)
+head(testing, n=5)
+```
+
+
+### Estimación del modelo de regresión lineal
+
+Planteamos un lineal que explique el precio de las acciones en función las variables de Volumen y capitalización en el mercado en dólares (MarketCapUSD)
+
+```{r message=FALSE, warning=FALSE}
+
+Modelo_lineal<- lm(PriceUSD~., data=training)
+summary(Modelo_lineal)
+```
+A partir de los resutaltados se identifica que como variable significativa estadisticamente tenemos únicamente MarketCapUSD por lo que se decide excluir el volumen del modelo.
+
+```{r message=FALSE, warning=FALSE}
+
+Modelo_lineal_adj <- lm(PriceUSD ~ MarketCapUSD, data = training)
+summary(Modelo_lineal_adj)
+```
+
+### Diagnosis del modelo.
+
+Para la diagnosis se escoge el modelo ajustado, eliminando las variables que no son estadisticamente significativas y se genera un gráfico de los residuos que son los valores observados menos los predichos por este modelo, asi como verificar la homocedesticidad y distribución normal de los residuos.
+
+```{r message=FALSE, warning=FALSE}
+
+res<- residuals(Modelo_lineal_adj)
+head(res)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+
+res<-as.data.frame(res)
+ggplot(res, aes(res))+geom_histogram(fill='skyblue', alpha=0.5)+
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000))  + labs(title = "Distribución de residuos del modelo", x = "Residuos", y = "Cantidad") +
   theme_minimal()
+
+```
+
+Ahora veremoslos valores ajustados frente a los residuos para identificar si la varianza es constante y el gráfico cuantil-cuantil para comparar los residuos del modelo con los valores de una distribución normal.
+
+```{r message=FALSE, warning=FALSE}
+
+#valores ajustados frente a residuos
+
+Residuos <- rstandard(Modelo_lineal_adj)
+valorajustados <- fitted(Modelo_lineal_adj)
+
+ggplot(Modelo_lineal_adj, aes(x=valorajustados, y=Residuos)) +  geom_point(color="deepskyblue4",fill="deepskyblue4",size=1,stroke = 1)+labs(title = NULL, x = "Valores ajustados", y = "Residuos") + theme_minimal()
+
+ggplot(Modelo_lineal_adj, aes(sample= Residuos)) + stat_qq() + labs(title = "QQ Plot de residuos", x = "Cuantiles teóricos", y = "Cuantiles de los residuos") + theme_minimal()
+
+
+```
+Por los resultados podemos concluir que tenemos heterocedasticidad, es decir que no tenemos una varianza constante de residuos en el modelo y por tanto no se cumple el supuesto de varianza constante en los errores del modelo. Asi mismo, los residuos no se ajustan a una distribución normal ya que hay valores atipicos, como ya lo habiamos identificado en durante la preparación de los datos.
+
+
+### Predicción y evaluación del modelo
+
+Calcularemos las predicciones del precio que tendría una acción, basados en los datos de prueba y representaremos los valores predichos frente los valores observados para posteriormente evaluar la precisión del modelo mediante la raíz cuadrada del error cuadrático medio.
+
+
+```{r message=FALSE, warning=FALSE}
+
+testing$pred_price <-predict(Modelo_lineal_adj, testing)
+
+ggplot(testing, aes(x = pred_price, y = PriceUSD)) + geom_point() + 
+  geom_abline(slope = 2, intercept = 0, color = "skyblue", linetype = "dashed") + labs(title = "Predichos vs Observados", x= "Predichos", y = "Observados") + theme_minimal()
+
+```
+
+
+Se observa que el modelo predice mejor las acciones de precios menores y tiene mayor dispersión hacia las acciones con precios más altos, donde existen mas outliers.
+
+En conclusion,  si bien tenemos buenos resultados para las predicciones de acciones con precio menor, sin embargo, para obtener resultados mas precisos para acciones de precios mayores es necesario ajustar las variables o el tipo de modelo supervisado aplicado.
+
+
+## Modelo no supervisado: K-Means
+
+Para desarrolar este modelo se tomo como referencia [este enlace](https://www.datacamp.com/tutorial/k-means-clustering-r) 
+
+Usaremos k-means clustering para agrupar acciones considerando las que tengan comportamientos similares, con el proposito de predecir patrones de comportamiento, es decir, como se agrupan las acciones y su relación con el precio de la acción.
+
+### Preparación de los datos
+
+Antes de plantear el modelo, revisamos la correlación de las variables, lo cual fue desarrollado y analizado en el apartado anterior, para el modelo de regresión lineal.  Volvemos a mostrar los resultados, como referencia: 
+
+
+```{r message=FALSE, warning=FALSE}
+df_s <- df %>% select("Volume", "PriceUSD", "MarketCapUSD" )
+
+df_s |> cor(use = "pairwise.complete.obs") |> round(4)
+```
+Como en el modelo anterior, y por los resultados de la correlación, se tomarán para este modelo las variables `PriceUSD`, `MarketCapUSD`.
+
+```{r message=FALSE, warning=FALSE}
+df_s <- df %>% select("PriceUSD", "MarketCapUSD")
+```
+
+
+POr ser un modelo sensible a las unidades, normalizamos las variables con las que trabajaremos y preparamos el dataset final que se usará como entrada para el modelo.
+
+```{r message=FALSE, warning=FALSE}
+df_s[, c("PriceUSD", "MarketCapUSD" )] = scale(df_s[, c("PriceUSD", "MarketCapUSD")])
+slice_head(df_s, n=5)
+```
+
+### Ajuste y evaluación
+
+
+Para determinar el número óptimo de clusteres usamos la técnica del codo. Hacemos iteraciones previas, para llegar al optimo con el menor número de operaciones posteriormente con la suma de los cuadrados dentro del clúster.
+
+
+```{r message=FALSE, warning=FALSE, echo= TRUE}
+set.seed(123)
+modelo_km <- kmeans(df_s, centers = 3, nstart = 20)
+```
+
+
+Los resultados que obtenemos son (omitido listado por espacio): 
+
+*********************************
+
+K-means clustering with 3 clusters of sizes 14567, 45, 21
+
+Cluster means:
+     PriceUSD MarketCapUSD
+1 -0.04397863  -0.03401189
+2 13.54031390   0.29804720
+3  1.49154861  22.95424041
+
+Within cluster sum of squares by cluster:
+[1] 6167.626 2619.982 1065.506
+ (between_SS / total_SS =  66.3 %)
+
+Available components:
+
+[1] "cluster"      "centers"      "totss"        "withinss"     "tot.withinss" "betweenss"    "size"        
+[8] "iter"         "ifault"     
+
+*********************************
+
+Ahora, con el método del codo vamos a calcular el k optimo:
+
+```{r message=FALSE, warning=FALSE}
+
+
+n_clusters <- 10
+wss <- numeric(n_clusters)
+
+set.seed(123)
+for (i in 1:n_clusters) {
+  modelo_km <- kmeans(df_s, centers = i, nstart = 20)
+  wss[i] <- modelo_km$tot.withinss
+}
+
+
+wss_df <- tibble(clusters = 1:n_clusters, wss = wss)
+ 
+scree_plot <- ggplot(wss_df, aes(x = clusters, y = wss, group = 1)) + geom_point(size = 4)+ geom_line() + scale_x_continuous(breaks = c(2, 4, 6, 8, 10)) + xlab('Number of clusters')  +
+  ggtitle("Método del codo para determinar K") + xlab("Número de clústeres") + ylab("Suma de cuadrados") +
+  geom_hline(yintercept = wss, linetype = 'dashed', col = c(rep('#000000',4),'#FF0000', rep('#000000', 5))) +
+  theme_minimal()
+
+scree_plot
+
+
+```
+
+
+Con esta grafica, ya se puede identificar que la mejor opcion para K es 6 ya que se ve como la suma total de cuadrados dentro de los clústeres disminuye a medida que aumenta el número de clústeres después de K=6.
+
+
+Usando este dato, volvemos a ajustar el modelo:
+```{r message=FALSE, warning=FALSE, echo=TRUE}
+
+k <- 6
+
+set.seed(123)
+
+modelo_km <- kmeans(df_s, centers = k, nstart = 20)
+```
+
+Esta vez, los resultados obtenidos son: 
+
+*********************************
+K-means clustering with 6 clusters of sizes 621, 15, 13799, 18, 48, 132
+
+Cluster means:
+   PriceUSD MarketCapUSD
+1  1.081741   0.57687602
+2 22.381642   0.76159321
+3 -0.132350  -0.08463922
+4  1.119399  24.56039489
+5  1.782775   5.98632273
+6  5.402194   0.52153078
+
+
+Within cluster sum of squares by cluster:
+[1] 681.2638 783.8824 437.6499 723.0091 403.4854 796.8161
+ (between_SS / total_SS =  86.9 %)
+
+Available components:
+
+[1] "cluster"      "centers"      "totss"        "withinss"     "tot.withinss" "betweenss"    "size"        
+[8] "iter"         "ifault" 
+
+
+*********************************
+
+Con estos resultados podemos ver que el modelo explica el 86.9% de la variación de los datos. Es tambien importante que la mayoria de los datos se concentran en el cluster 3 que tienen bajo precio y capitalización, lo cual sugiere que la mayoria de los precios y capitalizaciones bajos, lo cual es visible en las medias obtenidas -0.132350 y -0.08463922, respectivamente.
+
+
+Visualizamos los precios de la accion por cluster para encontrar patrones y comprobar lo que acabmos de obtener:
+
+```{r message=FALSE, warning=FALSE}
+df_s$cluster_id <- as.factor(modelo_km$cluster)
+
+
+ggplot(df_s, aes(MarketCapUSD, PriceUSD, color = cluster_id)) +
+    geom_point(alpha = 0.25) + xlab("Capitalización Bursatil") + ylab("PriceUSD")+ theme_minimal()
+```
+
+En cuanto a la distribución, comprobamos lo visto anteriormente. Asi mismo, se puede visualizar como el cluster 2 que contiene unicamente 15 entradas es el que tiene mayor precio en el mercado en comparacion con los demás.
+
+
+
+## Prueba de hipotesis
+
+Plantemos la hipotesis en la cual tenemos la intención de identificar si existen diferencias significativas de los precios de las acciones entre las diferentes regiones.
+
+**H~0~:** No hay diferencias significativas en los precios entre las diferentes regiones
+**H~1~:** Hay diferencias en los  precios entre las diferentes regiones
+
+
+```{r message=FALSE, warning=FALSE}
+unique(df$Region)
+
+```
+```{r message=FALSE, warning=FALSE}
+
+library(ggpubr)
+ggline(df, x="Region", y= "PriceUSD", color = "deepskyblue", title = "Box plot distribución") + xlab("Región") + ylab("PriceUSD")+ theme_minimal()
+
+
+
+```
+
+*Comprobación de normalidad y homocedasticidad:*
+
+```{r message=FALSE, warning=FALSE}
+densidad <- ggplot(df, aes(x = PriceUSD)) + geom_density(fill = "skyblue", alpha = 0.4) + ggtitle("Densidad de precios en dólares") + xlab("Precio") + ylab("Densidad") + scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000))+ theme_minimal()
+
+
+
+qq_plot <- ggplot(df, aes(sample = PriceUSD)) + stat_qq() + stat_qq_line(color = "red", linetype = "dashed") + ggtitle("Cuantil-Cuantil")+ xlab("Cantidad") + ylab("Precio de la acción") + theme_minimal()
+
+densidad
+
+qq_plot
+
+```
+
+
+Coeficiente de variación
+```{r message=FALSE, warning=FALSE}
+summary(df$PriceUSD)
+
+
+
+sd(df$PriceUSD)/mean(df$PriceUSD)
+```
+
+
+
+
+
+
+
+### Contribuciones y firmas: 
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+library(kableExtra)
+
+Contribuciones=c("Investigación previa","Redacción de las respuestas","Desarrollo del código", "Participación en el vídeo")
+Firmas=c("AMP y DCDG","AMP y DCDG", "AMP y DCDG", "AMP y DCDG")
+tabla_cont <- data.frame(Contribuciones, Firmas) 
+tabla_cont %>%  kbl(title= "Contribuciones y firmas:", format= "pipe", align= "c", booktabs= TRUE) %>%
+  kable_styling(bootstrap_options = c( "hover", "condensed"))
+
 ```
